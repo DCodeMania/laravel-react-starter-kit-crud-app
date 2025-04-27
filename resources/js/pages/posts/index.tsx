@@ -9,7 +9,7 @@ import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import debounce from 'lodash/debounce';
 import { Search } from 'lucide-react';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -42,13 +42,29 @@ interface PostsType {
     total: number;
 }
 
+declare global {
+    interface Window {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        Echo: any;
+    }
+}
+
 export default function Dashboard({ posts }: { posts: PostsType }) {
     const { flash } = usePage<{ flash: { message?: string } }>().props;
 
+    const [allPosts, setAllPosts] = useState<PostType[]>(posts.data);
+
     useEffect(() => {
-        if (flash.message) {
-            toast.success(flash.message);
-        }
+        const channel = window.Echo.channel('posts').listen('PostUpdated', ({ post }: { post: PostType }) => {
+            setAllPosts((prev) => prev.map((p) => (p.id === post.id ? post : p)));
+        });
+
+        if (flash.message) toast.success(flash.message);
+
+        return () => {
+            channel.stopListening('PostUpdated');
+            window.Echo.leave('posts');
+        };
     }, [flash.message]);
 
     // Search functionality
@@ -107,7 +123,7 @@ export default function Dashboard({ posts }: { posts: PostsType }) {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {posts.data?.map((post, index) => (
+                                    {allPosts?.map((post, index) => (
                                         <TableRow key={post.id}>
                                             <TableCell>{index + 1}</TableCell>
                                             <TableCell>

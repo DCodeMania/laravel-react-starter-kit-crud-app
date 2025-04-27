@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\PostUpdated;
 use App\Models\Post;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Illuminate\Support\Str;
@@ -102,6 +104,8 @@ class PostController extends Controller {
             'category' => $request->category,
             'image' => $filePath
         ]);
+
+        broadcast(new PostUpdated($post))->toOthers();
 
         return to_route('posts.index')->with('message', 'Post updated successfully.');
     }
